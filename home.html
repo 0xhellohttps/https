@@ -88,36 +88,27 @@
   @media (min-width:1000px){ h1{ font-size:48px; line-height:1; letter-spacing:-1.44px; } }
   .lede{ font-size:18px; line-height:1.3; color:rgba(255,255,255,.6); max-width:560px; }
 
-  /* ---- Hero ---- */
-  .hero{ position:relative; display:flex; flex-direction:column; gap:32px; padding:24px var(--pad-x) 32px; overflow:hidden; }
-  .hero::before{
-    content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
-    background-image:radial-gradient(rgba(235,235,235,.13) 1px, transparent 1.2px); background-size:24px 24px;
-    -webkit-mask-image:radial-gradient(ellipse 70% 70% at 75% 45%, #000 20%, transparent 75%);
-    mask-image:radial-gradient(ellipse 70% 70% at 75% 45%, #000 20%, transparent 75%);
-  }
-  .hero-grid{ position:relative; z-index:1; display:grid; gap:40px; }
-  .hero-copy{ display:flex; flex-direction:column; gap:32px; max-width:560px; }
+  /* ---- Hero: full-bleed live globe behind a headline that fills the hero ---- */
+  .hero{ position:relative; display:flex; flex-direction:column; justify-content:space-between; gap:32px; min-height:calc(100svh - var(--header-h)); padding:32px var(--pad-x) 40px; overflow:hidden; }
+  .globe{ position:absolute; inset:0; z-index:0; }
+  .globe-frame{ position:absolute; inset:0; opacity:.55; }
+  .globe-frame iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; display:block; background:var(--bg); }
+  .hero-grid{ position:relative; z-index:2; pointer-events:none; }
+  .hero-copy{ display:flex; flex-direction:column; gap:28px; }
+  .hero-copy > *{ pointer-events:auto; }
+  .hero h1{ font-family:var(--sans); font-weight:400; font-size:clamp(46px, 9.2vw, 172px); line-height:.98; letter-spacing:-.035em; max-width:none; color:var(--fg); text-wrap:balance; }
   .hero-cta{ display:flex; flex-direction:column; gap:8px; }
   .hero-cta .btn{ width:100%; }
-  .globe{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
-  .globe-frame{ position:relative; width:min(100%, 78vw, 420px); aspect-ratio:1; border:1px solid var(--border); background:var(--bg); overflow:hidden; }
-  .globe-frame iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; display:block; background:var(--bg); }
+  .hero-foot{ position:relative; z-index:2; display:flex; align-items:center; justify-content:flex-start; gap:24px; flex-wrap:wrap; pointer-events:none; }
+  .hero-foot > *{ pointer-events:auto; }
+  .pill{ display:inline-flex; align-items:center; gap:12px; height:48px; padding:0 16px; border:1px solid var(--border); background:var(--bg); }
+  .pill .dot{ width:8px; height:8px; background:var(--green); box-shadow:0 0 12px var(--green); }
   .globe-cap{ display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; }
   .globe-cap:hover{ color:var(--fg); }
   .globe-cap svg{ stroke:currentColor; fill:none; stroke-width:1.25; stroke-linecap:square; stroke-linejoin:miter; }
-  .hero-foot{ position:relative; z-index:1; display:none; }
-  .pill{ display:inline-flex; align-items:center; gap:12px; height:48px; padding:0 16px; border:1px solid var(--border); background:var(--bg); }
-  .pill .dot{ width:8px; height:8px; background:var(--green); box-shadow:0 0 12px var(--green); }
+  @media (max-width:999px){ .hero-cta, .globe-cap, .pill{ display:none; } .hero{ justify-content:center; } }
   @media (min-width:640px){ .hero-cta{ flex-direction:row; flex-wrap:wrap; } .hero-cta .btn{ width:auto; } }
-  @media (min-width:1000px){
-    .hero{ min-height:min(calc(100svh - var(--header-h)), 960px); justify-content:space-between; gap:0; padding-top:120px; padding-bottom:40px; }
-    .hero-grid{ grid-template-columns:minmax(0,1fr) minmax(0,.9fr); align-items:start; gap:48px; }
-    .hero-copy{ max-width:760px; gap:38px; }
-    .globe{ align-items:flex-end; justify-content:flex-start; padding-right:0; }
-    .globe-frame{ width:min(100%, calc(100svh - var(--header-h) - 220px), 760px); }
-    .hero-foot{ display:flex; }
-  }
+  @media (min-width:1000px){ .hero{ min-height:min(calc(100svh - var(--header-h)), 960px); padding-top:96px; } }
 
   /* ---- Terminal ---- */
   .term-wrap{ position:relative; z-index:40; width:100%; padding:64px var(--pad-x); }
@@ -233,13 +224,13 @@
       <a class="btn sm" href="#services" data-cmd="services"><i class="band"></i><i class="band"></i><span class="label">Services</span></a>
       <a class="btn sm" href="#consulting" data-cmd="consulting"><i class="band"></i><i class="band"></i><span class="label">Consulting</span></a>
       <a class="btn sm" href="#about" data-cmd="about"><i class="band"></i><i class="band"></i><span class="label">About</span></a>
-      <a class="btn sm" href="visualizer.html"><i class="band"></i><i class="band"></i><span class="label">Visualizer</span></a>
+      <a class="btn sm" href="music.html#visualizer"><i class="band"></i><i class="band"></i><span class="label">Visualizer</span></a>
       <a class="btn sm" href="music.html"><i class="band"></i><i class="band"></i><span class="label">Music</span></a>
       <a class="btn sm" href="#contact" data-cmd="contact" style="color:var(--fg)"><i class="band"></i><i class="band"></i><span class="label">Contact <svg viewBox="0 0 16 16"><line x1="4.5" y1="11.5" x2="11.5" y2="4.5"/><polyline points="5.5 4.5 11.5 4.5 11.5 10.5"/></svg></span></a>
     </nav>
     <button class="btn sm menu-btn" id="menuBtn" aria-expanded="false" aria-controls="mobileNav"><span class="label">Menu <svg viewBox="0 0 16 16"><polyline points="3.5 6 8 10.5 12.5 6"/></svg></span></button>
     <nav class="mobile" id="mobileNav" aria-label="Mobile">
-      <a href="#products">Products</a><a href="#services">Services</a><a href="#consulting">Consulting</a><a href="#about">About</a><a href="visualizer.html">Visualizer</a><a href="music.html">Music</a><a href="#contact">Contact</a>
+      <a href="#contact" style="color:var(--fg)">Start a project</a><a href="#products">Products</a><a href="#services">Services</a><a href="#consulting">Consulting</a><a href="#about">About</a><a href="music.html#visualizer">Visualizer</a><a href="music.html">Music</a><a href="#contact">Contact</a>
     </nav>
   </div>
 </header>
@@ -248,18 +239,15 @@
 <main>
   <!-- HERO -->
   <section class="hero">
+    <div class="globe" aria-hidden="true">
+      <div class="globe-frame"><iframe id="heroGlobe" title="Interactive https globe. Drag to spin." loading="eager" allow="accelerometer; gyroscope"></iframe></div>
+    </div>
     <div class="hero-grid">
       <div class="hero-copy">
-        <h1>We build fast, secure, well-encrypted web.<br>https-first, always.</h1>
+        <h1>We build fast, secure, well-encrypted web. https-first, always.</h1>
         <div class="hero-cta">
           <a class="btn primary" href="#contact"><i class="band"></i><i class="band"></i><span class="label">Start a project</span></a>
           <a class="btn" href="#services"><i class="band"></i><i class="band"></i><span class="label">View services</span></a>
-        </div>
-      </div>
-      <div class="globe">
-        <a class="globe-cap mono" href="visualizer.html">Drag to spin · Open visualizer <svg viewBox="0 0 16 16" width="14" height="14"><line x1="4.5" y1="11.5" x2="11.5" y2="4.5"/><polyline points="5.5 4.5 11.5 4.5 11.5 10.5"/></svg></a>
-        <div class="globe-frame">
-          <iframe src="visualizer.html?embed=1" title="Interactive https globe. Drag to spin." loading="eager" allow="accelerometer; gyroscope"></iframe>
         </div>
       </div>
     </div>
@@ -268,6 +256,7 @@
         <span class="dot" aria-hidden="true"></span>
         <span class="mono muted">Small team · senior hands · no slop</span>
       </div>
+      <a class="globe-cap mono" href="music.html#visualizer">Drag to spin · Open visualizer <svg viewBox="0 0 16 16" width="14" height="14"><line x1="4.5" y1="11.5" x2="11.5" y2="4.5"/><polyline points="5.5 4.5 11.5 4.5 11.5 10.5"/></svg></a>
     </div>
   </section>
 
@@ -397,7 +386,7 @@
     <div class="links">
       <a href="#top">https</a>
       <a href="#services">Studio</a>
-      <a href="visualizer.html">Visualizer</a>
+      <a href="music.html#visualizer">Visualizer</a>
       <a href="music.html">Music</a>
     </div>
     <svg id="lineLogo" role="img" aria-label="HTTPS" xmlns="http://www.w3.org/2000/svg" fill="#EBEBEB"></svg>
@@ -502,6 +491,10 @@
     return '<div class="step"><span class="n">0' + (i+1) + '</span><span class="t">' + esc(s) + '</span></div>';
   }).join("");
   document.getElementById("expertise").innerHTML = EXPERTISE.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join("");
+
+  /* Hero globe: framed on desktop; on phones it becomes the full hero background at a larger zoom */
+  var hg = document.getElementById("heroGlobe");
+  hg.src = "visualizer.html?embed=1&zoom=1.35";
 
   /* ---------------- Terminal ---------------- */
   var body = document.getElementById("termBody"), input = document.getElementById("termIn"), wrap = document.getElementById("termWrap");

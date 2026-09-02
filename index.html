@@ -20,13 +20,13 @@
   .mono{ font-family:var(--mono); font-size:14px; line-height:16px; letter-spacing:-.14px; text-transform:uppercase; }
   .muted{ color:var(--muted); }
 
-  #worldWrap{ position:fixed; inset:0; overflow:hidden; background:var(--bg); -webkit-overflow-scrolling:auto; }
+  /* Stage: every pixel above the HTTPS wordmark. The world is an absolute full-size layer inside it, clipped at the wordmark. */
+  .stage{ position:relative; flex:1 1 auto; min-height:0; overflow:hidden; background:var(--bg); }
   #world{ position:absolute; inset:0; width:100%; height:100%; border:0; display:block; background:var(--bg); }
 
-  .ui{ position:fixed; inset:0; display:flex; flex-direction:column; justify-content:space-between; padding:max(16px, env(safe-area-inset-top)) max(var(--pad-x), env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(var(--pad-x), env(safe-area-inset-left)); pointer-events:none; }
+  .ui{ position:fixed; inset:0; display:flex; flex-direction:column; gap:16px; padding:max(16px, env(safe-area-inset-top)) max(var(--pad-x), env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(var(--pad-x), env(safe-area-inset-left)); }
   @media (min-width:768px){ .ui{ padding-top:20px; padding-bottom:max(40px, env(safe-area-inset-bottom)); } }
-  .ui > *{ pointer-events:auto; }
-  .top, .bottom{ display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  .top{ display:flex; align-items:center; justify-content:space-between; gap:16px; flex:0 0 auto; }
   .brand{ display:flex; align-items:center; gap:10px; }
   .brand img{ width:30px; height:auto; filter:invert(1); mix-blend-mode:screen; }
   .brand span{ font-family:var(--mono); font-size:15px; letter-spacing:-.15px; }
@@ -36,7 +36,7 @@
   .label span{ font-family:var(--mono); font-size:14px; line-height:16px; letter-spacing:-.14px; text-transform:uppercase; color:var(--muted); }
   .label i.live{ background:var(--green); box-shadow:0 0 12px var(--green); }
 
-  .wordmark{ display:block; width:100%; cursor:pointer; }
+  .wordmark{ display:block; width:100%; cursor:pointer; flex:0 0 auto; }
   .wordmark svg{ display:block; width:100%; height:auto; max-height:22vh; }
   .wordmark rect{ fill:#EBEBEB; transition:fill .25s ease; }
   .wordmark:hover rect, .wordmark:focus-visible rect{ fill:var(--green); }
@@ -47,15 +47,12 @@
 </head>
 <body>
 
-<div id="worldWrap"><iframe id="world" title="The https globe, animated silently by the demo loop" allow="accelerometer; gyroscope"></iframe></div>
-<script>
-  /* Small world: 22% of the short viewport edge on desktop; a little larger on phones so it still reads as a globe. */
-  document.getElementById("world").src = "visualizer.html?embed=1&silent=1&cell=10&wire=1&zoom=" + (Math.min(window.innerWidth, window.innerHeight) < 600 ? "0.42" : "0.22");
-</script>
-
 <div class="ui">
   <div class="top">
     <a class="brand" href="home.html" aria-label="https — home"><img src="logo.gif" alt=""><span>https</span></a>
+  </div>
+  <div class="stage">
+    <iframe id="world" src="visualizer.html?embed=1&silent=1&cell=10&wire=1&fit=cover&zoom=1" title="The https globe, animated silently by the demo loop" allow="accelerometer; gyroscope"></iframe>
   </div>
   <a class="wordmark" href="home.html" aria-label="Enter https">
     <svg id="lineLogo" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>

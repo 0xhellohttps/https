@@ -52,6 +52,7 @@
   #stage{ position:fixed; inset:0; display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
   html.embed header, html.embed .cap, html.embed .stats, html.embed .prompt, html.embed .drop, html.embed #strip{ display:none !important; }
   html.embed #stage{ touch-action:pan-y; }
+  html.panel header, html.panel .cap, html.panel .stats{ display:none !important; }
   #stage.drag{ cursor:grabbing; }
 
   .cap{ position:fixed; z-index:40; pointer-events:none; left:var(--pad-x); top:calc(var(--header-h) + 12px); }
@@ -202,7 +203,9 @@
   var q = new URLSearchParams(location.search);
   var $ = function(id){ return document.getElementById(id); };
   var EMBED = q.get("embed") === "1";
-  var SILENT = q.get("silent") === "1";   /* drive the EQ from a silent sequencer that mirrors the demo loop; no AudioContext, no sound */
+  var SILENT = q.get("silent") === "1";
+  var PANEL = q.get("panel") === "1";   /* embedded with controls: hide the page header, caption and stats */
+  if (PANEL) document.documentElement.classList.add("panel");   /* drive the EQ from a silent sequencer that mirrors the demo loop; no AudioContext, no sound */
   if (EMBED) document.documentElement.classList.add("embed");
 
   /* ---------------- parameters ---------------- */
@@ -235,8 +238,8 @@
     var n = cols * rows;
     if (!hit || hit.length !== n){ hit = new Uint8Array(n); hx = new Float32Array(n); hy = new Float32Array(n); hz = new Float32Array(n); noise = new Float32Array(n); for (var k = 0; k < n; k++) noise[k] = Math.random(); }
     stripH = EMBED ? 0 : ($("strip").offsetHeight || 84);
-    var top = EMBED ? 0 : ((W < 768) ? 150 : 70);
-    var avail = EMBED ? Math.min(W, H) : Math.min(W - 32, H - top - stripH - 24);
+    var top = EMBED ? 0 : (PANEL ? 16 : ((W < 768) ? 150 : 70));
+    var avail = EMBED ? (q.get("fit") === "cover" ? Math.max(W, H) : Math.min(W, H)) : Math.min(W - 32, H - top - stripH - 24);
     R = Math.max(80, avail * (EMBED ? 0.5 : 0.47)) * P.zoom;
     cx = W / 2; cy = top + (H - top - stripH) / 2;
     hitCount = 0;
@@ -424,7 +427,11 @@
 
   /* ---------------- render ---------------- */
   var last = performance.now(), fpsAcc = 0, fpsN = 0, fpsT = 0, gY2 = 0;
+  /* Skip drawing while this frame is scrolled out of view or the tab is hidden (several embeds can share one page). */
+  var onScreen = true;
+  if ("IntersectionObserver" in window){ new IntersectionObserver(function(es){ onScreen = es[0].isIntersecting; }, { threshold: 0 }).observe(document.documentElement); }
   function frame(now){
+    if (!onScreen || document.hidden){ last = now; requestAnimationFrame(frame); return; }
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
     var eq = P.mode === "eq", tilt = P.mode === "tilt";
     if (eq){ if (SILENT) simulateSpectrum(now); else readSpectrum(); }

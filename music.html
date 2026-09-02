@@ -146,6 +146,9 @@
   @media (min-width:768px){ .foot-meta{ flex-direction:row; justify-content:space-between; align-items:center; } }
   @keyframes blink{ 0%,49%{opacity:1} 50%,100%{opacity:0} }
   @media (prefers-reduced-motion:reduce){ *{ animation:none !important; transition:none !important; } html{ scroll-behavior:auto; } }
+  .viz-panel{ position:relative; width:100%; height:640px; border:1px solid var(--border); background:var(--panel); overflow:hidden; }
+  .viz-panel iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; display:block; }
+  @media (max-width:767px){ .viz-panel{ height:600px; } }
 </style>
 </head>
 <body>
@@ -158,13 +161,13 @@
       <a class="btn sm" href="home.html"><i class="band"></i><i class="band"></i><span class="label">Studio</span></a>
       <a class="btn sm" href="#ooo"><i class="band"></i><i class="band"></i><span class="label">Out of Office</span></a>
       <a class="btn sm" href="#services"><i class="band"></i><i class="band"></i><span class="label">Services</span></a>
-      <a class="btn sm" href="visualizer.html"><i class="band"></i><i class="band"></i><span class="label">Visualizer</span></a>
+      <a class="btn sm" href="#visualizer"><i class="band"></i><i class="band"></i><span class="label">Visualizer</span></a>
       <a class="btn sm" href="#about"><i class="band"></i><i class="band"></i><span class="label">About</span></a>
       <a class="btn sm" href="#contact" style="color:var(--fg)"><i class="band"></i><i class="band"></i><span class="label">Contact <svg viewBox="0 0 16 16"><line x1="4.5" y1="11.5" x2="11.5" y2="4.5"/><polyline points="5.5 4.5 11.5 4.5 11.5 10.5"/></svg></span></a>
     </nav>
     <button class="btn sm menu-btn" id="menuBtn" aria-expanded="false" aria-controls="mobileNav"><span class="label">Menu <svg viewBox="0 0 16 16"><polyline points="3.5 6 8 10.5 12.5 6"/></svg></span></button>
     <nav class="mobile" id="mobileNav" aria-label="Mobile">
-      <a href="home.html">Studio</a><a href="#ooo">Out of Office</a><a href="#services">Services</a><a href="visualizer.html">Visualizer</a><a href="#about">About</a><a href="#contact">Contact</a>
+      <a href="home.html">Studio</a><a href="#ooo">Out of Office</a><a href="#services">Services</a><a href="#visualizer">Visualizer</a><a href="#about">About</a><a href="#contact">Contact</a>
     </nav>
   </div>
 </header>
@@ -176,7 +179,7 @@
     <div class="hero-in">
       <div class="label"><i></i><span>HTTPS Entertainment</span></div>
       <h1 class="sr">Sound, shipped https-first.</h1>
-      <pre class="ascii-h1" id="asciiH1" aria-hidden="true" data-desktop="SOUND, SHIPPED|HTTPS-FIRST." data-mobile="SOUND,|SHIPPED|HTTPS-|FIRST."></pre>
+      <pre class="ascii-h1" aria-hidden="true" data-desktop="SOUND, SHIPPED|HTTPS-FIRST." data-mobile="SOUND,|SHIPPED|HTTPS-|FIRST." data-max="40" data-max-mobile="22"></pre>
       <div class="hero-row">
         <p class="lede">HTTPS Entertainment provides marketing and technical services for record labels and artists.</p>
         <a class="next" href="#ooo">
@@ -280,6 +283,20 @@
       </div>
     </div>
   </section>
+  <!-- VISUALIZER (folded in from visualizer.html) -->
+  <section id="visualizer" class="viz-sec">
+    <div class="rule" style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <div class="label"><i></i><span>Visualizer</span></div>
+          <h2 style="max-width:640px">The logo as a live EQ. Drop a track, run the demo loop, or open the mic.</h2>
+        </div>
+        <span class="mono muted">Drag to spin · Scroll to zoom · Space holds spin</span>
+      </div>
+      <div class="viz-panel"><iframe src="visualizer.html?panel=1" title="Interactive https globe visualizer" allow="microphone; accelerometer; gyroscope" loading="lazy"></iframe></div>
+    </div>
+  </section>
+
 
   <!-- 5. AROUND THE WORLD -->
   <section id="world">
@@ -319,7 +336,7 @@
         <a href="#about">About</a>
         <a href="#ooo">Out of Office</a>
         <a href="#services">Services</a>
-        <a href="visualizer.html">Visualizer · Live EQ</a>
+        <a href="#visualizer">Visualizer · Live EQ</a>
       </div>
       <div>
         <h4>[contact]</h4>
@@ -366,38 +383,6 @@
   });
 })();
 </script>
-<script>
-(function(){
-  var el = document.getElementById("asciiH1"); if (!el) return;
-  var F = {
-    A:[" ### ","#   #","#####","#   #","#   #"], D:["#### ","#   #","#   #","#   #","#### "], E:["#####","#    ","#### ","#    ","#####"],
-    F:["#####","#    ","#### ","#    ","#    "], H:["#   #","#   #","#####","#   #","#   #"], I:["#####","  #  ","  #  ","  #  ","#####"],
-    N:["#   #","##  #","# # #","#  ##","#   #"], O:[" ### ","#   #","#   #","#   #"," ### "], P:["#### ","#   #","#### ","#    ","#    "],
-    R:["#### ","#   #","#### ","#  # ","#   #"], S:[" ####","#    "," ### ","    #","#### "], T:["#####","  #  ","  #  ","  #  ","  #  "],
-    U:["#   #","#   #","#   #","#   #"," ### "], ",":["   ","   ","   "," # ","#  "], "-":["     ","     "," ### ","     ","     "],
-    ".":["  ","  ","  ","  ","# "], " ":["   ","   ","   ","   ","   "]
-  };
-  function render(){
-    var lines = (window.innerWidth < 640 ? el.dataset.mobile : el.dataset.desktop).split("|"), out = [], maxCols = 0;
-    lines.forEach(function(line){
-      var rows = ["","","","",""];
-      for (var c = 0; c < line.length; c++){
-        var g = F[line[c]] || F[" "];
-        for (var r = 0; r < 5; r++) rows[r] += g[r] + " ";
-      }
-      rows = rows.map(function(x){ return x.replace(/\s+$/, ""); });
-      maxCols = Math.max(maxCols, rows.reduce(function(m, x){ return Math.max(m, x.length); }, 0));
-      out.push(rows.join("\n"));
-    });
-    /* faint dots in the empty cells so the grid reads as a surface, like the globe */
-    var html = out.join("\n\n").replace(/[#]/g, "\u0000").replace(/ /g, "<i>.</i>").replace(/\u0000/g, "#");
-    el.innerHTML = html;
-    var avail = (el.parentElement.clientWidth || window.innerWidth) - 34;
-    var fs = Math.min(window.innerWidth < 640 ? 22 : 40, avail / (maxCols * 0.6));
-    el.style.fontSize = fs.toFixed(2) + "px";
-  }
-  render(); window.addEventListener("resize", render);
-})();
-</script>
+<script src="ascii-type.js"></script>
 </body>
 </html>
