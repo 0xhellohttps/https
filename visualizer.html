@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en" style="color-scheme:dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>https — visualizer</title>
+<meta name="description" content="Interactive real-time render of the https globe. Drag to spin, scroll to zoom, tilt your phone, or feed it a track.">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23060606'/%3E%3Ctext x='50' y='64' font-family='ui-monospace,Menlo,monospace' font-size='44' font-weight='700' fill='%23ebebeb' text-anchor='middle'%3E%3E_%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@300..700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#060606; --panel:#101010; --panel-2:#191919; --panel-3:#262626;
+    --fg:#ebebeb; --muted:#757575; --border:rgba(235,235,235,.2); --border-hover:rgba(235,235,235,.4);
+    --green:#98f3aa; --purple:#9e94ff;
+    --sans:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+    --header-h:62px; --pad-x:16px;
+  }
+  @media (min-width:768px){ :root{ --header-h:70px; --pad-x:48px; } }
+  *,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; overflow:hidden; background:var(--bg); color:var(--fg); font-family:var(--sans); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,select,input{ font:inherit; color:inherit; background:none; border:0; cursor:pointer; }
+  [hidden]{ display:none !important; }
+
+  header{ position:fixed; inset:0 0 auto 0; z-index:50; }
+  .header-in{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px var(--pad-x); }
+  @media (min-width:768px){ .header-in{ padding:20px var(--pad-x); } }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand img{ width:30px; height:auto; filter:invert(1); mix-blend-mode:screen; }
+  .brand span{ font-family:var(--mono); font-size:15px; letter-spacing:-.15px; }
+  .brand span::after{ content:"_"; animation:blink 1.1s steps(1) infinite; }
+  .label{ display:flex; align-items:center; gap:4px; }
+  .label i{ display:block; width:11px; height:11px; background:var(--muted); flex:none; }
+  .label span{ font-family:var(--mono); font-size:14px; line-height:16px; letter-spacing:-.14px; text-transform:uppercase; color:var(--muted); }
+
+  .btn{ position:relative; display:inline-flex; align-items:center; justify-content:center; gap:8px; height:30px; padding:0 12px; overflow:hidden; white-space:nowrap;
+    border:1px solid var(--border); background:var(--panel); color:var(--muted); font-family:var(--mono); font-size:13px; line-height:16px; letter-spacing:-.13px; text-transform:uppercase; transition:border-color .2s, color .2s; }
+  .btn:hover{ border-color:var(--border-hover); color:var(--fg); }
+  .btn .band{ position:absolute; left:0; right:0; height:50%; background:#fff; transform:scaleX(0); transform-origin:right; transition:transform .38s cubic-bezier(.77,0,.175,1); pointer-events:none; }
+  .btn .band:nth-child(1){ top:0; } .btn .band:nth-child(2){ top:50%; transition-delay:.05s; }
+  .btn:hover .band{ transform:scaleX(1); transform-origin:left; }
+  .btn .l{ position:relative; z-index:1; display:inline-flex; align-items:center; gap:8px; transition:color .15s ease .12s; }
+  .btn:hover .l{ color:var(--bg); }
+  .btn svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:1.25; stroke-linecap:square; stroke-linejoin:miter; }
+  .btn.on{ color:var(--fg); border-color:var(--border-hover); background:var(--panel-3); }
+  .btn.live{ color:var(--green); }
+
+  #stage{ position:fixed; inset:0; display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+  html.embed header, html.embed .cap, html.embed .stats, html.embed .prompt, html.embed .drop, html.embed #strip{ display:none !important; }
+  html.embed #stage{ touch-action:pan-y; }
+  #stage.drag{ cursor:grabbing; }
+
+  .cap{ position:fixed; z-index:40; pointer-events:none; left:var(--pad-x); top:calc(var(--header-h) + 12px); }
+  .cap .h{ font-family:var(--sans); font-size:18px; line-height:1.1; letter-spacing:-.2px; margin-top:10px; max-width:320px; color:var(--fg); }
+  .cap .h em{ font-style:normal; color:rgba(255,255,255,.55); }
+  .stats{ position:fixed; right:var(--pad-x); top:calc(var(--header-h) + 12px); z-index:40; font-family:var(--mono); font-size:12px; line-height:1.7; text-transform:uppercase; color:var(--muted); text-align:right; pointer-events:none; display:none; }
+  .stats b{ font-weight:400; color:var(--fg); }
+  @media (min-width:768px){ .stats{ display:block; } }
+
+  /* gesture prompt */
+  .prompt{ position:fixed; left:50%; transform:translateX(-50%); z-index:46; display:inline-flex; align-items:center; gap:12px; height:44px; padding:0 18px; border:1px solid var(--border-hover); background:rgba(6,6,6,.85); font-family:var(--mono); font-size:13px; text-transform:uppercase; letter-spacing:-.13px; color:var(--fg); pointer-events:none; }
+  .prompt i{ width:8px; height:8px; background:var(--green); box-shadow:0 0 12px var(--green); animation:blink 1s steps(1) infinite; }
+
+  /* control strip */
+  .strip{ position:fixed; left:0; right:0; bottom:0; z-index:45; border-top:1px solid var(--border); background:rgba(6,6,6,.85); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+  .row{ display:flex; flex-wrap:wrap; align-items:stretch; }
+  .row + .row{ border-top:1px solid var(--border); }
+  .ctl{ display:flex; flex-direction:column; gap:8px; padding:12px 24px 12px 16px; border-right:1px solid var(--border); min-width:0; justify-content:center; }
+  .ctl .k{ font-family:var(--mono); font-size:11px; letter-spacing:-.1px; text-transform:uppercase; color:var(--muted); display:flex; justify-content:space-between; gap:12px; white-space:nowrap; }
+  .ctl .k b{ font-weight:400; color:var(--fg); }
+  .seg{ display:flex; gap:4px; }
+  .seg .btn{ height:28px; padding:0 10px; font-size:12px; }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:140px; height:22px; background:transparent; }
+  input[type=range]::-webkit-slider-runnable-track{ height:1px; background:var(--border); }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:10px; height:10px; margin-top:-4.5px; background:var(--fg); border:0; border-radius:0; }
+  input[type=range]::-moz-range-track{ height:1px; background:var(--border); }
+  input[type=range]::-moz-range-thumb{ width:10px; height:10px; background:var(--fg); border:0; border-radius:0; }
+  .hint{ padding:12px var(--pad-x); font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:-.1px; color:var(--muted); display:flex; align-items:center; gap:14px; margin-left:auto; }
+  .hint kbd{ font:inherit; border:1px solid var(--border); padding:2px 6px; color:var(--fg); }
+  /* transport */
+  .transport{ display:flex; align-items:center; gap:12px; padding:10px 16px; min-width:0; flex:1; font-family:var(--mono); font-size:12px; text-transform:uppercase; letter-spacing:-.1px; color:var(--muted); }
+  .transport .name{ color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:260px; }
+  .transport .time{ min-width:44px; color:var(--fg); }
+  .transport .spec{ font-family:var(--mono); font-size:13px; letter-spacing:1px; color:var(--fg); white-space:pre; line-height:1; }
+  .transport .spec.dim{ color:var(--muted); }
+  .tilt-read{ font-family:var(--mono); font-size:12px; text-transform:uppercase; color:var(--muted); display:flex; gap:14px; align-items:center; }
+  .tilt-read b{ font-weight:400; color:var(--fg); min-width:44px; display:inline-block; }
+  .drop{ position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; background:rgba(6,6,6,.7); border:1px dashed var(--border-hover); margin:12px; font-family:var(--mono); text-transform:uppercase; font-size:14px; color:var(--fg); pointer-events:none; }
+  .drop.on{ display:flex; }
+  @media (max-width:767px){
+    .ctl{ padding:8px 12px; gap:6px; flex:1 1 45%; }
+    .ctl:nth-child(2n){ border-right:0; }
+    #tiltRow .ctl{ flex:1 1 100%; border-right:0; }
+    #tiltRow .transport{ display:none; }
+    .tilt-read{ flex-wrap:wrap; gap:8px 12px; }
+    .seg{ flex-wrap:wrap; }
+    input[type=range]{ width:100%; }
+    .hint{ display:none; }
+    .cap .h{ font-size:15px; max-width:220px; }
+    .transport{ flex-wrap:wrap; gap:8px 12px; }
+    .transport .name{ max-width:160px; }
+  }
+  @keyframes blink{ 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  @media (prefers-reduced-motion:reduce){ .brand span::after, .prompt i{ animation:none; } .btn .band, .btn .l{ transition:none; } }
+</style>
+</head>
+<body>
+
+<canvas id="stage" aria-label="Interactive ASCII globe. Drag to rotate, scroll to zoom."></canvas>
+
+<header>
+  <div class="header-in">
+    <a class="brand" href="index.html" aria-label="https — home"><img src="logo.gif" alt=""><span>https</span></a>
+    <a class="btn" href="index.html"><i class="band"></i><i class="band"></i><span class="l"><svg viewBox="0 0 16 16"><line x1="11.5" y1="8" x2="4.5" y2="8"/><polyline points="8 4.5 4.5 8 8 11.5"/></svg>Back to site</span></a>
+  </div>
+</header>
+
+<div class="cap">
+  <div class="label"><i></i><span>Visualizer · 01</span></div>
+  <div class="h" id="capText">The https globe, rendered live. <em>Drag to spin, scroll to zoom. It never stops turning.</em></div>
+</div>
+<div class="stats"><b id="fps">60</b> fps<br><b id="cells">0</b> cells<br>yaw <b id="yaw">0°</b></div>
+<div class="prompt" id="prompt" hidden><i></i><span id="promptText">Click to play</span></div>
+<div class="drop" id="drop">Drop audio to play</div>
+
+<div class="strip" id="strip">
+  <div class="row">
+    <div class="ctl">
+      <div class="k"><span>Speed</span><b id="vSpeed">1.0×</b></div>
+      <input id="speed" type="range" min="0" max="3" step="0.05" value="1" aria-label="Rotation speed">
+    </div>
+    <div class="ctl">
+      <div class="k"><span>Density</span><b id="vDensity">11px</b></div>
+      <input id="density" type="range" min="5" max="16" step="1" value="11" aria-label="Glyph grid size">
+    </div>
+    <div class="ctl">
+      <div class="k"><span>Glyphs</span></div>
+      <div class="seg" id="glyphs">
+        <button class="btn on" data-set="logo"><span class="l">.-+#</span></button>
+        <button class="btn" data-set="shade"><span class="l">░▒▓█</span></button>
+        <button class="btn" data-set="binary"><span class="l">01</span></button>
+      </div>
+    </div>
+    <div class="ctl">
+      <div class="k"><span>Surface</span></div>
+      <div class="seg" id="surface">
+        <button class="btn on" data-mode="solid"><span class="l">Solid</span></button>
+        <button class="btn" data-mode="wire"><span class="l">Wireframe</span></button>
+      </div>
+    </div>
+    <div class="ctl">
+      <div class="k"><span>Mode</span></div>
+      <div class="seg" id="modeSeg">
+        <button class="btn" data-m="eq"><span class="l">EQ</span></button>
+        <button class="btn" data-m="tilt"><span class="l">Tilt</span></button>
+      </div>
+    </div>
+    <div class="hint"><span><kbd>drag</kbd> spin</span><span><kbd>scroll</kbd> zoom</span><span><kbd>space</kbd> hold spin</span><span><kbd>R</kbd> reset</span></div>
+  </div>
+
+  <!-- EQ row -->
+  <div class="row" id="eqRow" hidden>
+    <div class="ctl">
+      <div class="k"><span>Source</span></div>
+      <div class="seg" id="srcSeg">
+        <button class="btn" data-src="track"><span class="l">Track</span></button>
+        <button class="btn" data-src="demo"><span class="l">Demo</span></button>
+        <button class="btn" data-src="file"><span class="l">File</span></button>
+        <button class="btn" data-src="mic"><span class="l">Mic</span></button>
+        <input id="file" type="file" accept="audio/*" hidden>
+      </div>
+    </div>
+    <div class="transport">
+      <button class="btn" id="play" aria-label="Play or pause"><span class="l" id="playL">Play</span></button>
+      <span class="time" id="time">0:00</span>
+      <span class="name" id="track">No source</span>
+      <span class="spec dim" id="spec">▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁</span>
+    </div>
+  </div>
+
+  <!-- TILT row -->
+  <div class="row" id="tiltRow" hidden>
+    <div class="ctl">
+      <div class="k"><span>Motion</span></div>
+      <div class="seg">
+        <button class="btn" id="enableMotion" hidden><span class="l">Enable motion</span></button>
+        <span class="tilt-read"><span>β <b id="tb">0°</b></span><span>γ <b id="tg">0°</b></span><span id="tiltSrc">pointer</span></span>
+      </div>
+    </div>
+    <div class="transport" style="color:var(--muted)"><span id="tiltHint">Tilt the device to sweep the inversion across the globe.</span></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var canvas = document.getElementById("stage"), ctx = canvas.getContext("2d", { alpha:false });
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var q = new URLSearchParams(location.search);
+  var $ = function(id){ return document.getElementById(id); };
+  var EMBED = q.get("embed") === "1";
+  if (EMBED) document.documentElement.classList.add("embed");
+
+  /* ---------------- parameters ---------------- */
+  var GLYPHS = { logo:[" ", ".", "-", "+", "#"], shade:[" ", "░", "▒", "▓", "█"], binary:[" ", "0", "1", "1", "1"] };
+  var P = { speed:1, cell:11, set:"logo", wire:false, zoom:1, baseSpin:(reduce ? 0.18 : 0.42), mode:"eq" };
+  var MERIDIANS = 12, PAR = [0, Math.sin(Math.PI/6), -Math.sin(Math.PI/6)];
+  var TILT0 = 0.12;
+  var MW = 0.085, PW = 0.075;
+  var TWO_PI = Math.PI * 2, SEG = TWO_PI / MERIDIANS;
+
+  /* ---------------- state ---------------- */
+  var yaw = 0, pitch = TILT0, yawVel = 0, pitchVel = 0, spinning = true;
+  var W = 0, H = 0, dpr = 1, cols = 0, rows = 0, cw = 8, ch = 10, R = 100, cx = 0, cy = 0, stripH = 84;
+  var hit = null, hx = null, hy = null, hz = null, noise = null, hitCount = 0;
+  var mouseX = -1e9, mouseY = -1e9, hoverR = 90, lastPX = 0, lastPY = 0;
+  var atlas = null, atlasInv = null, LEVELS = 12, glyphCount = 5, aW = 0, aH = 0;
+
+  /* ---------------- sizing / precompute ---------------- */
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    layout();
+  }
+  function layout(){
+    cw = P.cell; ch = Math.round(P.cell * 1.22);
+    cols = Math.ceil(W / cw) + 1; rows = Math.ceil(H / ch) + 1;
+    var n = cols * rows;
+    if (!hit || hit.length !== n){ hit = new Uint8Array(n); hx = new Float32Array(n); hy = new Float32Array(n); hz = new Float32Array(n); noise = new Float32Array(n); for (var k = 0; k < n; k++) noise[k] = Math.random(); }
+    stripH = EMBED ? 0 : ($("strip").offsetHeight || 84);
+    var top = EMBED ? 0 : ((W < 768) ? 150 : 70);
+    var avail = EMBED ? Math.min(W, H) : Math.min(W - 32, H - top - stripH - 24);
+    R = Math.max(80, avail * (EMBED ? 0.5 : 0.47)) * P.zoom;
+    cx = W / 2; cy = top + (H - top - stripH) / 2;
+    hitCount = 0;
+    for (var r = 0; r < rows; r++){
+      var sy = (cy - (r * ch + ch * 0.5)) / R;
+      for (var c = 0; c < cols; c++){
+        var i = r * cols + c, sx = ((c * cw + cw * 0.5) - cx) / R, d = 1 - sx * sx - sy * sy;
+        if (d <= 0){ hit[i] = 0; continue; }
+        hit[i] = 1; hx[i] = sx; hy[i] = sy; hz[i] = Math.sqrt(d); hitCount++;
+      }
+    }
+    buildAtlas();
+    $("cells").textContent = hitCount;
+  }
+  function makeAtlas(bg, lo, hi){
+    var set = GLYPHS[P.set];
+    var a = document.createElement("canvas");
+    a.width = aW * LEVELS; a.height = aH * glyphCount;
+    var g = a.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.fillStyle = bg; g.fillRect(0, 0, a.width, a.height);
+    g.font = (P.set === "shade" ? (ch * 0.98) : (cw * 1.62)) + 'px "Geist Mono", ui-monospace, Menlo, monospace';
+    g.textAlign = "center"; g.textBaseline = "middle";
+    for (var gi = 0; gi < glyphCount; gi++){
+      for (var l = 0; l < LEVELS; l++){
+        var t = l / (LEVELS - 1), v = Math.round(lo + (hi - lo) * t);
+        g.fillStyle = "rgb(" + v + "," + v + "," + v + ")";
+        g.fillText(set[gi], l * cw + cw / 2, gi * ch + ch / 2 + 0.5);
+      }
+    }
+    return a;
+  }
+  function buildAtlas(){
+    glyphCount = GLYPHS[P.set].length; aW = Math.round(cw * dpr); aH = Math.round(ch * dpr);
+    atlas = makeAtlas("#060606", 40, 235);      // dark ground, light glyphs
+    atlasInv = makeAtlas("#ebebeb", 190, 10);   // light ground, dark glyphs (tilt inversion)
+  }
+
+  /* ---------------- audio (EQ mode) ---------------- */
+  var actx = null, analyser = null, spec = null, gain = null, source = null, srcKind = null, media = null, micStream = null;
+  var NB = 24, latAmp = new Float32Array(NB), bandBass = 0, bandMid = 0, bandHigh = 0, energy = 0, playing = false, demo = null;
+  var SPECCH = ["▁","▂","▃","▄","▅","▆","▇","█"], specBuf = new Array(24);
+  function ensureAudio(){
+    if (actx) return true;
+    var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
+    actx = new AC();
+    analyser = actx.createAnalyser(); analyser.fftSize = 512; analyser.smoothingTimeConstant = 0.82;
+    spec = new Uint8Array(analyser.frequencyBinCount);
+    gain = actx.createGain(); gain.gain.value = 0.9;
+    analyser.connect(gain); gain.connect(actx.destination);
+    return true;
+  }
+  function stopSource(){
+    if (demo){ demo.stop(); demo = null; }
+    if (media){ media.pause(); media = null; }
+    if (source){ try { source.disconnect(); } catch(e){} source = null; }
+    if (micStream){ micStream.getTracks().forEach(function(t){ t.stop(); }); micStream = null; }
+    playing = false; srcKind = null; $("playL").textContent = "Play"; $("track").textContent = "No source"; $("spec").classList.add("dim");
+  }
+  function setSource(kind, file){
+    if (!ensureAudio()) return;
+    stopSource();
+    srcKind = kind;
+    document.querySelectorAll("#srcSeg .btn").forEach(function(b){ b.classList.toggle("on", b.dataset.src === kind); });
+    if (kind === "track"){
+      /* Local-only track: keep-calling.mp3 is git-ignored and not shipped. Fall back to the demo loop when it is missing. */
+      media = new Audio("keep-calling.mp3"); media.preload = "metadata"; media.loop = true; media.crossOrigin = "anonymous";
+      media.addEventListener("error", function(){ if (srcKind === "track") setSource("demo"); }, { once: true });
+      media.addEventListener("loadedmetadata", function(){ if (srcKind === "track") $("capText").innerHTML = "The https globe as a live EQ. <em>Now playing KEEP CALLING. Drop your own track, try the demo loop, or open the mic.</em>"; }, { once: true });
+      source = actx.createMediaElementSource(media); source.connect(analyser);
+      $("track").textContent = "KEEP CALLING"; play();
+    }
+    else if (kind === "demo"){ demo = makeDemo(); source = demo.out; source.connect(analyser); $("track").textContent = "Demo loop · 120 bpm"; play(); }
+    else if (kind === "file"){
+      media = new Audio(URL.createObjectURL(file)); media.loop = true;
+      source = actx.createMediaElementSource(media); source.connect(analyser);
+      $("track").textContent = file.name; play();
+    } else if (kind === "mic"){
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ $("track").textContent = "Mic unavailable"; return; }
+      navigator.mediaDevices.getUserMedia({ audio:true }).then(function(s){
+        micStream = s; source = actx.createMediaStreamSource(s); source.connect(analyser);
+        gain.gain.value = 0;  /* never monitor the mic to the speakers */
+        $("track").textContent = "Microphone"; playing = true; $("playL").textContent = "Stop"; $("spec").classList.remove("dim");
+      }, function(){ $("track").textContent = "Mic denied"; });
+    }
+  }
+  function play(){
+    if (!actx) return;
+    if (actx.state === "suspended") actx.resume();
+    if (gain && srcKind !== "mic") gain.gain.value = 0.9;
+    if (srcKind === "demo" && demo){ demo.start(); }
+    if ((srcKind === "file" || srcKind === "track") && media){ var pr = media.play(); if (pr && pr.catch) pr.catch(function(){}); }
+    playing = true; $("playL").textContent = "Pause"; $("spec").classList.remove("dim");
+  }
+  function pause(){
+    if (srcKind === "demo" && demo){ demo.pause(); }
+    if ((srcKind === "file" || srcKind === "track") && media){ media.pause(); }
+    if (srcKind === "mic"){ stopSource(); return; }
+    playing = false; $("playL").textContent = "Play";
+  }
+  /* synthesized demo: kick, hats, bass, pad — scheduled with a lookahead timer, no assets */
+  function makeDemo(){
+    var out = actx.createGain(); out.gain.value = 0.8;
+    var bpm = 120, step = 60 / bpm / 4, nextT = 0, stepIdx = 0, timer = null, running = false, startedAt = 0;
+    var bassNotes = [55, 55, 82.4, 55, 65.4, 55, 73.4, 49];
+    var noiseBuf = actx.createBuffer(1, actx.sampleRate * 0.25, actx.sampleRate), nd = noiseBuf.getChannelData(0);
+    for (var i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    var pad = null;
+    function kick(t){ var o = actx.createOscillator(), g = actx.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12); g.gain.setValueAtTime(1, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35); o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.4); }
+    function hat(t, open){ var s = actx.createBufferSource(), g = actx.createGain(), f = actx.createBiquadFilter(); s.buffer = noiseBuf; f.type = "highpass"; f.frequency.value = 7000; g.gain.setValueAtTime(open ? 0.35 : 0.22, t); g.gain.exponentialRampToValueAtTime(0.001, t + (open ? 0.22 : 0.05)); s.connect(f); f.connect(g); g.connect(out); s.start(t); s.stop(t + 0.3); }
+    function bass(t, f0){ var o = actx.createOscillator(), g = actx.createGain(), lp = actx.createBiquadFilter(); o.type = "sawtooth"; o.frequency.value = f0; lp.type = "lowpass"; lp.frequency.setValueAtTime(900, t); lp.frequency.exponentialRampToValueAtTime(180, t + 0.2); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.24); o.connect(lp); lp.connect(g); g.connect(out); o.start(t); o.stop(t + 0.26); }
+    function startPad(){ pad = actx.createGain(); pad.gain.value = 0.06; var lp = actx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1400; [220, 277.2, 329.6, 440].forEach(function(f, k){ var o = actx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; o.detune.value = (k % 2 ? 6 : -6); o.connect(lp); o.start(); pad._o = (pad._o || []).concat(o); }); lp.connect(pad); pad.connect(out); }
+    function schedule(){
+      while (nextT < actx.currentTime + 0.25){
+        var s = stepIdx % 16, bar = Math.floor(stepIdx / 16);
+        if (s % 4 === 0) kick(nextT);
+        if (s % 2 === 0) hat(nextT, s % 8 === 6);
+        if (s % 2 === 1 || s === 0) bass(nextT, bassNotes[(bar * 2 + (s >> 3)) % bassNotes.length] * (s % 4 === 2 ? 2 : 1));
+        nextT += step; stepIdx++;
+      }
+    }
+    return {
+      out: out,
+      start: function(){ if (running) return; running = true; nextT = actx.currentTime + 0.05; startedAt = actx.currentTime - (stepIdx * step); startPad(); schedule(); timer = setInterval(schedule, 100); },
+      pause: function(){ running = false; clearInterval(timer); if (pad){ pad._o.forEach(function(o){ o.stop(); }); pad.disconnect(); pad = null; } },
+      stop: function(){ this.pause(); out.disconnect(); },
+      elapsed: function(){ return running ? actx.currentTime - startedAt : stepIdx * step; }
+    };
+  }
+  function readSpectrum(){
+    if (!analyser || !playing){ bandBass *= 0.9; bandMid *= 0.9; bandHigh *= 0.9; energy *= 0.9; for (var k = 0; k < NB; k++) latAmp[k] *= 0.9; return; }
+    analyser.getByteFrequencyData(spec);
+    var n = spec.length, sum = 0, b = 0, m = 0, h = 0;
+    for (var i = 1; i < 8; i++) b += spec[i]; bandBass = b / 7 / 255;
+    for (i = 8; i < 40; i++) m += spec[i]; bandMid = m / 32 / 255;
+    for (i = 40; i < 140; i++) h += spec[i]; bandHigh = h / 100 / 255;
+    for (i = 0; i < n; i++) sum += spec[i]; energy = sum / n / 255;
+    /* NB latitude bands: log-spaced bins so bass sits at the equator (k=0) and highs at the poles */
+    for (var k = 0; k < NB; k++){
+      var lo = Math.floor(Math.pow(n * 0.6, k / NB)), hi = Math.max(lo + 1, Math.floor(Math.pow(n * 0.6, (k + 1) / NB)));
+      var s = 0; for (i = lo; i < hi; i++) s += spec[i];
+      latAmp[k] = (s / (hi - lo) / 255) * (1 + k / NB * 1.4);
+    }
+  }
+
+  /* ---------------- orientation (TILT mode) ---------------- */
+  var tb = 0, tg = 0, sb = 0, sg = 0, sensor = false, sensorSeen = false, tnx = 0, tny = 0, tthr = 2;
+  function onOrient(e){ if (e.beta == null) return; sensorSeen = true; sensor = true; tb = e.beta; tg = e.gamma; $("tiltSrc").textContent = "sensor"; }
+  function bindOrientation(){
+    if (!window.DeviceOrientationEvent) return;
+    window.addEventListener("deviceorientation", onOrient);
+    setTimeout(function(){ if (!sensorSeen) $("tiltSrc").textContent = "pointer"; }, 1500);
+  }
+  function setupTilt(){
+    var DOE = window.DeviceOrientationEvent;
+    if (DOE && typeof DOE.requestPermission === "function"){
+      $("enableMotion").hidden = false;
+      $("enableMotion").onclick = function(){ DOE.requestPermission().then(function(r){ if (r === "granted"){ bindOrientation(); $("enableMotion").hidden = true; } else { $("tiltSrc").textContent = "pointer (denied)"; } }, function(){ $("tiltSrc").textContent = "pointer (denied)"; }); };
+    } else bindOrientation();
+  }
+  window.__setTilt = function(beta, gamma){ sensor = true; sensorSeen = true; tb = beta; tg = gamma; $("tiltSrc").textContent = "sensor"; };
+  function updateTilt(dt){
+    if (!sensor){ /* pointer fallback: where you point/touch drives the sweep */
+      tg = Math.max(-60, Math.min(60, (lastPX - cx) / R * 60));
+      tb = 45 + Math.max(-60, Math.min(60, (lastPY - cy) / R * 60));
+    }
+    var k = 1 - Math.exp(-dt * 6);
+    sb += (tb - sb) * k; sg += (tg - sg) * k;
+    var nx = Math.max(-1, Math.min(1, sg / 60)), ny = -Math.max(-1, Math.min(1, (sb - 45) / 60));
+    var mag = Math.min(1, Math.sqrt(nx * nx + ny * ny));
+    if (mag > 1e-4){ tnx = nx / mag; tny = ny / mag; } else { tnx = 0; tny = 0; }
+    tthr = 1.02 - 1.72 * mag;  /* flat: nothing inverted; full tilt: ~85% of the globe inverted */
+  }
+
+  /* ---------------- render ---------------- */
+  var last = performance.now(), fpsAcc = 0, fpsN = 0, fpsT = 0, gY2 = 0;
+  function frame(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    var eq = P.mode === "eq", tilt = P.mode === "tilt";
+    if (eq) readSpectrum();
+    if (tilt) updateTilt(dt);
+
+    if (spinning) yaw += P.baseSpin * P.speed * dt * (eq ? (1 + bandBass * 1.2) : 1);
+    yaw += yawVel * dt; pitch += pitchVel * dt;
+    var decay = Math.exp(-dt * 2.2); yawVel *= decay; pitchVel *= decay;
+    pitch += (TILT0 - pitch) * (1 - Math.exp(-dt * 0.8));
+    if (pitch > 1.2) pitch = 1.2; if (pitch < -1.2) pitch = -1.2;
+
+    var cyaw = Math.cos(yaw), syaw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    var mx = (mouseX - cx) / R, my = (cy - mouseY) / R, hr = hoverR / R, hr2 = hr * hr;
+    var mw = MW * (eq ? 1 + bandHigh * 0.9 : 1), pwE = PW * (eq ? 1 + bandBass * 1.3 : 1), pwM = PW * (eq ? 1 + bandMid * 0.9 : 1);
+    var limb0 = eq ? 0.74 - bandBass * 0.08 : 0.74, gc = glyphCount - 1, wire = P.wire;
+
+    ctx.fillStyle = "#060606"; ctx.fillRect(0, 0, W, H);
+    for (var r = 0; r < rows; r++){
+      var py = r * ch;
+      for (var c = 0; c < cols; c++){
+        var i = r * cols + c;
+        if (!hit[i]) continue;
+        var sx = hx[i], sy = hy[i], sz = hz[i];
+        var I = surface(sx, sy, sz, cyaw, syaw, cp, sp, mw, pwE, pwM);
+        var y2 = gY2;
+        I *= 0.62 + 0.38 * sz;
+        if (wire){ var Ib = surface(sx, sy, -sz, cyaw, syaw, cp, sp, mw, pwE, pwM) * 0.32 * (1 - sz * 0.5); if (Ib > I) I = Ib; }
+        var rr = sx * sx + sy * sy;
+        if (rr > limb0){ var Il = (rr - limb0) / (1 - limb0) * 0.95; if (Il > I) I = Il; }
+        if (eq){
+          var k = ((y2 < 0 ? -y2 : y2) * NB) | 0; if (k >= NB) k = NB - 1;
+          var a = latAmp[k];
+          I *= 0.6 + 0.55 * a + energy * 0.2;
+          if (rr > 0.93 - bandHigh * 0.2 && (y2 > 0.82 || y2 < -0.82)) I += bandHigh * 0.6;   /* highs ripple the poles */
+        }
+        var inv = false;
+        if (tilt){ inv = (sx * tnx + sy * tny) > tthr; }
+        var dx = sx - mx, dy = sy - my, d2 = dx * dx + dy * dy;
+        if (d2 < hr2){ var hv = 1 - d2 / hr2; I += hv * hv * 0.55; }
+        I += (noise[i] - 0.5) * 0.22;
+        if (I > 1) I = 1; if (I < 0) I = 0;
+        var g = (I * gc + 0.5) | 0, l = (I * (LEVELS - 1) + 0.5) | 0;
+        if (inv){ ctx.drawImage(atlasInv, l * aW, g * aH, aW, aH, c * cw, py, cw, ch); }
+        else if (g >= 1){ ctx.drawImage(atlas, l * aW, g * aH, aW, aH, c * cw, py, cw, ch); }
+      }
+    }
+
+    fpsAcc += dt; fpsN++;
+    if (now - fpsT > 250){
+      $("fps").textContent = Math.round(fpsN / fpsAcc); $("yaw").textContent = Math.round(((yaw % TWO_PI + TWO_PI) % TWO_PI) * 180 / Math.PI) + "°"; fpsAcc = 0; fpsN = 0; fpsT = now;
+      if (eq){
+        if (spec){ var n = spec.length; for (var j = 0; j < 24; j++){ var lo = Math.floor(Math.pow(n * 0.6, j / 24)), hi = Math.max(lo + 1, Math.floor(Math.pow(n * 0.6, (j + 1) / 24))), s = 0; for (var t = lo; t < hi; t++) s += spec[t]; specBuf[j] = SPECCH[Math.min(7, ((s / (hi - lo)) / 255 * 7.99) | 0)]; } $("spec").textContent = specBuf.join(""); }
+        var el = (srcKind === "file" || srcKind === "track") && media ? media.currentTime : (srcKind === "demo" && demo ? demo.elapsed() : 0);
+        $("time").textContent = Math.floor(el / 60) + ":" + ("0" + Math.floor(el % 60)).slice(-2);
+      }
+      if (tilt){ $("tb").textContent = Math.round(sb) + "°"; $("tg").textContent = Math.round(sg) + "°"; }
+    }
+    requestAnimationFrame(frame);
+  }
+  function surface(sx, sy, sz, cyaw, syaw, cp, sp, mw, pwE, pwM){
+    var y1 = sy * cp - sz * sp, z1 = sy * sp + sz * cp;
+    var x2 = sx * cyaw - z1 * syaw, z2 = sx * syaw + z1 * cyaw, y2 = y1;
+    gY2 = y2;
+    var lon = Math.atan2(z2, x2), d = lon - Math.round(lon / SEG) * SEG;
+    var horiz = Math.sqrt(x2 * x2 + z2 * z2);
+    d = (d < 0 ? -d : d) * horiz;
+    var I = 1 - d / mw, t;
+    d = (y2 < 0 ? -y2 : y2) * 1.1; t = 1 - d / pwE; if (t > I) I = t;              /* equator */
+    d = y2 - PAR[1]; d = (d < 0 ? -d : d) * 1.1; t = 1 - d / pwM; if (t > I) I = t;  /* +30° */
+    d = y2 - PAR[2]; d = (d < 0 ? -d : d) * 1.1; t = 1 - d / pwM; if (t > I) I = t;  /* -30° */
+    return I > 0 ? Math.pow(I, 0.85) : 0;
+  }
+
+  /* ---------------- interaction ---------------- */
+  var dragging = false, lastX = 0, lastY = 0, lastT = 0, pinchD = 0, pointers = {}, gestured = false;
+  function firstGesture(){
+    if (gestured) return; gestured = true;
+    if (P.mode === "eq" && !srcKind){ setSource("track"); }
+    else if (actx && actx.state === "suspended") actx.resume();
+    $("prompt").hidden = true;
+  }
+  document.addEventListener("pointerdown", firstGesture, true);
+  document.addEventListener("keydown", firstGesture, true);
+  canvas.addEventListener("pointerdown", function(e){
+    pointers[e.pointerId] = e; canvas.setPointerCapture(e.pointerId);
+    lastPX = e.clientX; lastPY = e.clientY;
+    if (Object.keys(pointers).length === 2){ pinchD = pdist(); dragging = false; return; }
+    dragging = true; canvas.classList.add("drag"); lastX = e.clientX; lastY = e.clientY; lastT = performance.now(); yawVel = 0; pitchVel = 0;
+  });
+  canvas.addEventListener("pointermove", function(e){
+    if (e.pointerType === "mouse"){ mouseX = e.clientX; mouseY = e.clientY; lastPX = e.clientX; lastPY = e.clientY; }
+    if (pointers[e.pointerId]) pointers[e.pointerId] = e;
+    if (Object.keys(pointers).length === 2){ var d = pdist(); if (pinchD > 0) setZoom(P.zoom * d / pinchD); pinchD = d; return; }
+    if (!dragging) return;
+    var now = performance.now(), dt = Math.max(1, now - lastT) / 1000, dx = e.clientX - lastX, dy = e.clientY - lastY, k = 1.6 / R;
+    yaw += dx * k; pitch += dy * k;
+    yawVel = Math.max(-14, Math.min(14, (dx * k) / dt * 0.55)); pitchVel = (dy * k) / dt * 0.55;
+    lastX = e.clientX; lastY = e.clientY; lastT = now;
+    if (e.pointerType === "touch"){ mouseX = e.clientX; mouseY = e.clientY; lastPX = e.clientX; lastPY = e.clientY; }
+  });
+  function endPointer(e){ delete pointers[e.pointerId]; if (Object.keys(pointers).length < 2) pinchD = 0; dragging = false; canvas.classList.remove("drag"); if (e.pointerType === "touch") mouseX = -1e9; }
+  canvas.addEventListener("pointerup", endPointer); canvas.addEventListener("pointercancel", endPointer);
+  canvas.addEventListener("pointerleave", function(e){ if (e.pointerType === "mouse") mouseX = -1e9; });
+  function pdist(){ var ids = Object.keys(pointers), a = pointers[ids[0]], b = pointers[ids[1]]; return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+  if (!EMBED) canvas.addEventListener("wheel", function(e){ e.preventDefault(); setZoom(P.zoom * Math.exp(-e.deltaY * 0.0016)); }, { passive:false });
+  function setZoom(z){ P.zoom = Math.min(2.4, Math.max(0.45, z)); layout(); }
+  window.addEventListener("keydown", function(e){
+    if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON")) return;
+    if (e.code === "Space"){ e.preventDefault(); spinning = !spinning; }
+    if (e.key === "r" || e.key === "R"){ yaw = 0; pitch = TILT0; yawVel = 0; pitchVel = 0; P.zoom = 1; spinning = true; layout(); }
+  });
+  window.addEventListener("resize", resize);
+
+  /* drag & drop audio */
+  var dropDepth = 0;
+  window.addEventListener("dragenter", function(e){ e.preventDefault(); dropDepth++; $("drop").classList.add("on"); });
+  window.addEventListener("dragover", function(e){ e.preventDefault(); });
+  window.addEventListener("dragleave", function(){ if (--dropDepth <= 0){ dropDepth = 0; $("drop").classList.remove("on"); } });
+  window.addEventListener("drop", function(e){ e.preventDefault(); dropDepth = 0; $("drop").classList.remove("on"); var f = e.dataTransfer && e.dataTransfer.files[0]; if (f && /^audio\//.test(f.type)){ gestured = true; $("prompt").hidden = true; setMode("eq"); setSource("file", f); } });
+
+  /* controls */
+  $("speed").addEventListener("input", function(){ P.speed = +this.value; $("vSpeed").textContent = P.speed.toFixed(2).replace(/0$/, "") + "×"; });
+  $("density").addEventListener("input", function(){ P.cell = +this.value; $("vDensity").textContent = P.cell + "px"; layout(); });
+  $("glyphs").addEventListener("click", function(e){ var b = e.target.closest("[data-set]"); if (!b) return; P.set = b.dataset.set; this.querySelectorAll(".btn").forEach(function(x){ x.classList.toggle("on", x === b); }); buildAtlas(); });
+  $("surface").addEventListener("click", function(e){ var b = e.target.closest("[data-mode]"); if (!b) return; P.wire = b.dataset.mode === "wire"; this.querySelectorAll(".btn").forEach(function(x){ x.classList.toggle("on", x === b); }); });
+  $("modeSeg").addEventListener("click", function(e){ var b = e.target.closest("[data-m]"); if (!b) return; setMode(b.dataset.m); });
+  $("srcSeg").addEventListener("click", function(e){ var b = e.target.closest("[data-src]"); if (!b) return; if (b.dataset.src === "file"){ $("file").click(); return; } setSource(b.dataset.src); });
+  $("file").addEventListener("change", function(){ if (this.files[0]) setSource("file", this.files[0]); this.value = ""; });
+  $("play").addEventListener("click", function(){ if (!srcKind){ setSource("track"); return; } playing ? pause() : play(); });
+
+  var tiltReady = false;
+  function setMode(m){
+    P.mode = m;
+    document.querySelectorAll("#modeSeg .btn").forEach(function(b){ b.classList.toggle("on", b.dataset.m === m); });
+    $("eqRow").hidden = m !== "eq"; $("tiltRow").hidden = m !== "tilt";
+    if (m === "none"){ $("prompt").hidden = true; if (playing) pause(); layout(); return; }
+    if (m === "tilt"){
+      if (!tiltReady){ tiltReady = true; setupTilt(); }
+      $("capText").innerHTML = "The https globe, rendered live. <em>Tilt the device to sweep the inversion across the world.</em>";
+      $("prompt").hidden = true;
+      if (playing) pause();
+    } else {
+      $("capText").innerHTML = "The https globe as a live EQ. <em>Drop your own track, try the demo loop, or open the mic.</em>";
+      if (!gestured){ $("promptText").textContent = (matchMedia("(pointer: coarse)").matches ? "Tap" : "Click") + " to play"; $("prompt").hidden = false; }
+    }
+    layout();
+  }
+
+  /* boot */
+  var coarse = window.matchMedia("(pointer: coarse)").matches && !!window.DeviceOrientationEvent;
+  if (window.innerWidth < 768){ P.cell = 7; $("density").value = 7; $("vDensity").textContent = "7px"; }
+  resize();
+  if (q.get("zoom")) P.zoom = Math.min(2.4, Math.max(0.45, parseFloat(q.get("zoom")) || 1));
+  setMode(EMBED ? (q.get("mode") || "none") : (q.get("mode") || (coarse ? "tilt" : "eq")));
+  if (q.get("tilt")){ var tv = q.get("tilt").split(","); window.__setTilt(+tv[0], +tv[1]); }
+  if (q.get("autostart") === "eq"){ firstGesture(); }
+  window.__startDemo = function(){ gestured = true; $("prompt").hidden = true; setSource("demo"); };
+  window.__energy = function(){ return { energy: energy, bass: bandBass, mid: bandMid, high: bandHigh, playing: playing, src: srcKind }; };
+  setInterval(function(){ document.documentElement.setAttribute("data-energy", energy.toFixed(3)); document.documentElement.setAttribute("data-src", srcKind || ""); }, 250);
+  if (document.fonts && document.fonts.load){ document.fonts.load('12px "Geist Mono"').then(buildAtlas, function(){}); }
+  requestAnimationFrame(function(t){ last = t; frame(t); });
+  $("prompt").style.bottom = ($("strip").offsetHeight + 20) + "px";
+  window.addEventListener("resize", function(){ $("prompt").style.bottom = ($("strip").offsetHeight + 20) + "px"; });
+})();
+</script>
+</body>
+</html>

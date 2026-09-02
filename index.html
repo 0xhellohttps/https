@@ -65,7 +65,7 @@
   .brand span::after{ content:"_"; animation:blink 1.1s steps(1) infinite; }
   nav.desktop{ display:none; gap:8px; align-items:center; }
   .menu-btn{ display:inline-flex; }
-  @media (min-width:880px){ nav.desktop{ display:flex; } .menu-btn{ display:none; } }
+  @media (min-width:980px){ nav.desktop{ display:flex; } .menu-btn{ display:none; } }
   nav.mobile{ display:none; position:absolute; right:var(--pad-x); top:calc(100% + 4px); min-width:220px; border:1px solid var(--border); background:var(--panel); padding:6px 8px; }
   nav.mobile.open{ display:block; }
   nav.mobile a{ display:block; padding:8px 12px; font-family:var(--mono); font-size:14px; line-height:16px; text-transform:uppercase; color:var(--muted); }
@@ -100,8 +100,12 @@
   .hero-copy{ display:flex; flex-direction:column; gap:32px; max-width:560px; }
   .hero-cta{ display:flex; flex-direction:column; gap:8px; }
   .hero-cta .btn{ width:100%; }
-  .globe{ display:flex; align-items:center; justify-content:center; }
-  .globe img{ width:220px; filter:invert(1); mix-blend-mode:screen; opacity:.92; }
+  .globe{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+  .globe-frame{ position:relative; width:min(100%, 78vw, 420px); aspect-ratio:1; border:1px solid var(--border); background:var(--bg); overflow:hidden; }
+  .globe-frame iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; display:block; background:var(--bg); }
+  .globe-cap{ display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; }
+  .globe-cap:hover{ color:var(--fg); }
+  .globe-cap svg{ stroke:currentColor; fill:none; stroke-width:1.25; stroke-linecap:square; stroke-linejoin:miter; }
   .hero-foot{ position:relative; z-index:1; display:none; }
   .pill{ display:inline-flex; align-items:center; gap:12px; height:48px; padding:0 16px; border:1px solid var(--border); background:var(--bg); }
   .pill .dot{ width:8px; height:8px; background:var(--green); box-shadow:0 0 12px var(--green); }
@@ -110,8 +114,8 @@
     .hero{ min-height:min(calc(100svh - var(--header-h)), 960px); justify-content:space-between; gap:0; padding-top:120px; padding-bottom:40px; }
     .hero-grid{ grid-template-columns:minmax(0,1fr) minmax(0,.9fr); align-items:start; gap:48px; }
     .hero-copy{ max-width:760px; gap:38px; }
-    .globe{ justify-content:flex-end; padding-right:8%; }
-    .globe img{ width:clamp(280px, 28vw, 440px); }
+    .globe{ align-items:flex-end; justify-content:flex-start; padding-right:0; }
+    .globe-frame{ width:min(100%, calc(100svh - var(--header-h) - 220px), 760px); }
     .hero-foot{ display:flex; }
   }
 
@@ -199,6 +203,13 @@
   .foot-cta{ display:flex; flex-direction:column; gap:8px; }
   .foot-cta .btn{ width:100%; }
   @media (min-width:640px){ .foot-cta{ flex-direction:row; flex-wrap:wrap; } .foot-cta .btn{ width:auto; } }
+  .wordmark{ display:flex; flex-direction:column; gap:8px; margin-top:120px; }
+  @media (min-width:768px){ .wordmark{ margin-top:160px; gap:16px; } }
+  .wordmark .links{ display:flex; flex-wrap:wrap; gap:8px 24px; font-family:var(--mono); font-size:14px; line-height:16px; letter-spacing:-.14px; text-transform:uppercase; }
+  .wordmark .links a{ color:var(--muted); transition:color .2s; }
+  .wordmark .links a:first-child{ color:var(--fg); }
+  .wordmark .links a:hover{ color:var(--fg); }
+  .wordmark svg{ display:block; width:100%; height:auto; margin:8px 0; }
   .foot-meta{ display:flex; flex-direction:column; gap:24px; margin-top:40px; padding-top:24px; border-top:1px solid var(--border); font-family:var(--mono); font-size:13px; text-transform:uppercase; letter-spacing:-.13px; color:var(--muted); }
   .foot-meta a:hover{ color:var(--fg); }
   .foot-links{ display:flex; flex-wrap:wrap; gap:8px 24px; }
@@ -222,11 +233,13 @@
       <a class="btn sm" href="#services" data-cmd="services"><i class="band"></i><i class="band"></i><span class="label">Services</span></a>
       <a class="btn sm" href="#consulting" data-cmd="consulting"><i class="band"></i><i class="band"></i><span class="label">Consulting</span></a>
       <a class="btn sm" href="#about" data-cmd="about"><i class="band"></i><i class="band"></i><span class="label">About</span></a>
+      <a class="btn sm" href="visualizer.html"><i class="band"></i><i class="band"></i><span class="label">Visualizer</span></a>
+      <a class="btn sm" href="music.html"><i class="band"></i><i class="band"></i><span class="label">Music</span></a>
       <a class="btn sm" href="#contact" data-cmd="contact" style="color:var(--fg)"><i class="band"></i><i class="band"></i><span class="label">Contact <svg viewBox="0 0 16 16"><line x1="4.5" y1="11.5" x2="11.5" y2="4.5"/><polyline points="5.5 4.5 11.5 4.5 11.5 10.5"/></svg></span></a>
     </nav>
     <button class="btn sm menu-btn" id="menuBtn" aria-expanded="false" aria-controls="mobileNav"><span class="label">Menu <svg viewBox="0 0 16 16"><polyline points="3.5 6 8 10.5 12.5 6"/></svg></span></button>
     <nav class="mobile" id="mobileNav" aria-label="Mobile">
-      <a href="#products">Products</a><a href="#services">Services</a><a href="#consulting">Consulting</a><a href="#about">About</a><a href="#contact">Contact</a>
+      <a href="#products">Products</a><a href="#services">Services</a><a href="#consulting">Consulting</a><a href="#about">About</a><a href="visualizer.html">Visualizer</a><a href="music.html">Music</a><a href="#contact">Contact</a>
     </nav>
   </div>
 </header>
@@ -243,7 +256,12 @@
           <a class="btn" href="#services"><i class="band"></i><i class="band"></i><span class="label">View services</span></a>
         </div>
       </div>
-      <div class="globe"><img src="logo.gif" alt="Animated ASCII globe"></div>
+      <div class="globe">
+        <a class="globe-cap mono" href="visualizer.html">Drag to spin · Open visualizer <svg viewBox="0 0 16 16" width="14" height="14"><line x1="4.5" y1="11.5" x2="11.5" y2="4.5"/><polyline points="5.5 4.5 11.5 4.5 11.5 10.5"/></svg></a>
+        <div class="globe-frame">
+          <iframe src="visualizer.html?embed=1" title="Interactive https globe. Drag to spin." loading="eager" allow="accelerometer; gyroscope"></iframe>
+        </div>
+      </div>
     </div>
     <div class="hero-foot">
       <div class="pill">
@@ -366,6 +384,15 @@
       <button class="btn" data-cmd="contact"><i class="band"></i><i class="band"></i><span class="label">Contact in terminal</span></button>
     </div>
     <p class="mono muted">Replies within one business day.</p>
+  </div>
+  <div class="wordmark">
+    <div class="links">
+      <a href="#top">https</a>
+      <a href="#services">Studio</a>
+      <a href="visualizer.html">Visualizer</a>
+      <a href="music.html">Music</a>
+    </div>
+    <svg id="lineLogo" role="img" aria-label="HTTPS" xmlns="http://www.w3.org/2000/svg" fill="#EBEBEB"></svg>
   </div>
   <div class="foot-meta">
     <div class="foot-links">
@@ -503,6 +530,9 @@
     var min = wrap.classList.toggle("min"); this.textContent = min ? "+ show" : "— hide";
   });
 
+  /* Desktop: start collapsed so the hero globe stays unobstructed; any command or nav click expands it. */
+  if (window.innerWidth >= 1000){ wrap.classList.add("min"); document.getElementById("termMin").textContent = "+ show"; }
+
   /* Boot sequence */
   var BOOT = [
     ['<span class="dim">$</span> curl -sI https://https.example', "cmdline"],
@@ -520,6 +550,70 @@
     line(BOOT[i][0], BOOT[i][1]);
     setTimeout(function(){ boot(i+1); }, reduce ? 0 : (i === 0 ? 420 : 110));
   })(0);
+
+  /* ---------------- Footer line-logo (bars resolve into letters as the footer scrolls in) ---------------- */
+  (function(){
+    var svg = document.getElementById("lineLogo"); if (!svg) return;
+    var U = 82, RP = 66, BH = 46, LW = 6, GAP = 1, ROWS = 5;
+    /* 5-row bar font: per row, [column, width] runs; letters are 6 units wide */
+    var FONT = {
+      H: [[[0,1],[5,1]], [[0,1],[5,1]], [[0,6]], [[0,1],[5,1]], [[0,1],[5,1]]],
+      T: [[[0,6]], [[2,2]], [[2,2]], [[2,2]], [[2,2]]],
+      P: [[[0,6]], [[0,1],[5,1]], [[0,6]], [[0,1]], [[0,1]]],
+      S: [[[0,6]], [[0,1]], [[0,6]], [[5,1]], [[0,6]]]
+    };
+    var word = "HTTPS", totalU = word.length * LW + (word.length - 1) * GAP;
+    var W = totalU * U, H = (ROWS - 1) * RP + BH;
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    var bars = [], NS = "http://www.w3.org/2000/svg";
+    for (var li = 0; li < word.length; li++){
+      var rows = FONT[word[li]], sx = li * (LW + GAP) * U, sw = LW * U;
+      for (var r = 0; r < ROWS; r++){
+        rows[r].forEach(function(run){
+          var el = document.createElementNS(NS, "rect");
+          el.setAttribute("y", r * RP); el.setAttribute("height", BH);
+          svg.appendChild(el);
+          bars.push({ el: el, sx: sx, sw: sw, rx: sx + run[0] * U, rw: run[1] * U, off: (r / (ROWS - 1)) * 2 });
+        });
+      }
+    }
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var shown = -1, target = 0, raf = 0, lastT = 0;
+    function expoOut(t){ return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t); }
+    function paint(p){
+      for (var i = 0; i < bars.length; i++){
+        var b = bars[i], t = (p * 4 - b.off) / 2; if (t < 0) t = 0; if (t > 1) t = 1;
+        var e = expoOut(t);
+        b.el.setAttribute("x", (b.sx + (b.rx - b.sx) * e).toFixed(1));
+        b.el.setAttribute("width", (b.sw + (b.rw - b.sw) * e).toFixed(1));
+      }
+    }
+    var footer = svg.closest("footer");
+    function progress(){
+      var vh = window.innerHeight, r = footer.getBoundingClientRect();
+      var start = vh * 0.5, end = vh, top = r.top, bottom = r.bottom;   /* footer top hits viewport center → footer bottom hits viewport bottom */
+      var span = Math.max(1, (bottom - top) - (end - start));
+      var p = (start - top) / span; return p < 0 ? 0 : (p > 1 ? 1 : p);
+    }
+    if (reduce){ paint(1); return; }
+    paint(0);
+    function tick(now){
+      var dt = Math.min(0.05, (now - (lastT || now)) / 1000); lastT = now;
+      target = progress();
+      if (shown < 0) shown = target;
+      shown += (target - shown) * (1 - Math.exp(-dt / 0.45));   /* ~2s scrub catch-up, like mpp */
+      if (Math.abs(target - shown) < 0.0005) shown = target;
+      paint(shown);
+      raf = requestAnimationFrame(tick);
+    }
+    var running = false;
+    function start(){ if (!running){ running = true; lastT = 0; raf = requestAnimationFrame(tick); } }
+    function stop(){ if (running){ running = false; cancelAnimationFrame(raf); } }
+    if ("IntersectionObserver" in window){
+      new IntersectionObserver(function(es){ es[0].isIntersecting ? start() : stop(); }, { rootMargin: "25% 0px" }).observe(footer);
+    } else start();
+    window.addEventListener("scroll", function(){ if (footer.getBoundingClientRect().top < window.innerHeight * 1.25) start(); }, { passive: true });
+  })();
 
   /* ---------------- Mobile menu ---------------- */
   var menuBtn = document.getElementById("menuBtn"), mnav = document.getElementById("mobileNav");
