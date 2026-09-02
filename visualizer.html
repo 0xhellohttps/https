@@ -114,8 +114,8 @@
 
 <header>
   <div class="header-in">
-    <a class="brand" href="index.html" aria-label="https — home"><img src="logo.gif" alt=""><span>https</span></a>
-    <a class="btn" href="index.html"><i class="band"></i><i class="band"></i><span class="l"><svg viewBox="0 0 16 16"><line x1="11.5" y1="8" x2="4.5" y2="8"/><polyline points="8 4.5 4.5 8 8 11.5"/></svg>Back to site</span></a>
+    <a class="brand" href="home.html" aria-label="https — home"><img src="logo.gif" alt=""><span>https</span></a>
+    <a class="btn" href="home.html"><i class="band"></i><i class="band"></i><span class="l"><svg viewBox="0 0 16 16"><line x1="11.5" y1="8" x2="4.5" y2="8"/><polyline points="8 4.5 4.5 8 8 11.5"/></svg>Back to site</span></a>
   </div>
 </header>
 
@@ -167,7 +167,6 @@
     <div class="ctl">
       <div class="k"><span>Source</span></div>
       <div class="seg" id="srcSeg">
-        <button class="btn" data-src="track"><span class="l">Track</span></button>
         <button class="btn" data-src="demo"><span class="l">Demo</span></button>
         <button class="btn" data-src="file"><span class="l">File</span></button>
         <button class="btn" data-src="mic"><span class="l">Mic</span></button>
@@ -203,6 +202,7 @@
   var q = new URLSearchParams(location.search);
   var $ = function(id){ return document.getElementById(id); };
   var EMBED = q.get("embed") === "1";
+  var SILENT = q.get("silent") === "1";   /* drive the EQ from a silent sequencer that mirrors the demo loop; no AudioContext, no sound */
   if (EMBED) document.documentElement.classList.add("embed");
 
   /* ---------------- parameters ---------------- */
@@ -301,15 +301,7 @@
     stopSource();
     srcKind = kind;
     document.querySelectorAll("#srcSeg .btn").forEach(function(b){ b.classList.toggle("on", b.dataset.src === kind); });
-    if (kind === "track"){
-      /* Local-only track: keep-calling.mp3 is git-ignored and not shipped. Fall back to the demo loop when it is missing. */
-      media = new Audio("keep-calling.mp3"); media.preload = "metadata"; media.loop = true; media.crossOrigin = "anonymous";
-      media.addEventListener("error", function(){ if (srcKind === "track") setSource("demo"); }, { once: true });
-      media.addEventListener("loadedmetadata", function(){ if (srcKind === "track") $("capText").innerHTML = "The https globe as a live EQ. <em>Now playing KEEP CALLING. Drop your own track, try the demo loop, or open the mic.</em>"; }, { once: true });
-      source = actx.createMediaElementSource(media); source.connect(analyser);
-      $("track").textContent = "KEEP CALLING"; play();
-    }
-    else if (kind === "demo"){ demo = makeDemo(); source = demo.out; source.connect(analyser); $("track").textContent = "Demo loop · 120 bpm"; play(); }
+    if (kind === "demo"){ demo = makeDemo(); source = demo.out; source.connect(analyser); $("track").textContent = "Demo loop · 120 bpm"; play(); }
     else if (kind === "file"){
       media = new Audio(URL.createObjectURL(file)); media.loop = true;
       source = actx.createMediaElementSource(media); source.connect(analyser);
@@ -328,12 +320,12 @@
     if (actx.state === "suspended") actx.resume();
     if (gain && srcKind !== "mic") gain.gain.value = 0.9;
     if (srcKind === "demo" && demo){ demo.start(); }
-    if ((srcKind === "file" || srcKind === "track") && media){ var pr = media.play(); if (pr && pr.catch) pr.catch(function(){}); }
+    if ((srcKind === "file") && media){ var pr = media.play(); if (pr && pr.catch) pr.catch(function(){}); }
     playing = true; $("playL").textContent = "Pause"; $("spec").classList.remove("dim");
   }
   function pause(){
     if (srcKind === "demo" && demo){ demo.pause(); }
-    if ((srcKind === "file" || srcKind === "track") && media){ media.pause(); }
+    if ((srcKind === "file") && media){ media.pause(); }
     if (srcKind === "mic"){ stopSource(); return; }
     playing = false; $("playL").textContent = "Play";
   }
@@ -382,6 +374,25 @@
     }
   }
 
+  /* ---------------- silent sequencer (mirrors makeDemo's pattern without audio) ---------------- */
+  var seqT0 = 0;
+  function simulateSpectrum(now){
+    var t = (now - seqT0) / 1000, step = 60 / 120 / 4, idx = Math.floor(t / step), ph = t - idx * step, s = idx % 16;
+    var sinceKick = (s % 4) * step + ph;                                  /* kick on every 4th step */
+    var sinceHat = (s % 2) * step + ph, openHat = (s % 8) >= 6;            /* hats on even steps, open on step 6 */
+    var sinceBass = ((s % 2 === 1 || s === 0) ? 0 : step) + ph;           /* bass on odd steps and step 0 */
+    var kick = Math.exp(-sinceKick * 9), hat = Math.exp(-sinceHat * (openHat ? 10 : 28)), bassHit = Math.exp(-sinceBass * 7);
+    var pad = 0.16 + 0.04 * Math.sin(t * 0.7);
+    var tb = 0.30 + 0.62 * kick + 0.12 * bassHit, tm = pad + 0.42 * bassHit + 0.1 * kick, th = 0.08 + 0.55 * hat, k = 0.32;
+    bandBass += (tb - bandBass) * k; bandMid += (tm - bandMid) * k; bandHigh += (th - bandHigh) * k;
+    energy += ((0.35 * tb + 0.4 * tm + 0.25 * th) - energy) * k;
+    for (var b = 0; b < NB; b++){
+      var u = b / (NB - 1), target = (u < 0.5 ? tb * (1 - u * 2) + tm * (u * 2) : tm * (2 - u * 2) + th * (u * 2 - 1)) * (1 + u * 1.4);
+      target *= 0.85 + 0.15 * Math.sin(t * 3.1 + b * 0.9);
+      latAmp[b] += (target - latAmp[b]) * k;
+    }
+  }
+
   /* ---------------- orientation (TILT mode) ---------------- */
   var tb = 0, tg = 0, sb = 0, sg = 0, sensor = false, sensorSeen = false, tnx = 0, tny = 0, tthr = 2;
   function onOrient(e){ if (e.beta == null) return; sensorSeen = true; sensor = true; tb = e.beta; tg = e.gamma; $("tiltSrc").textContent = "sensor"; }
@@ -416,7 +427,7 @@
   function frame(now){
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
     var eq = P.mode === "eq", tilt = P.mode === "tilt";
-    if (eq) readSpectrum();
+    if (eq){ if (SILENT) simulateSpectrum(now); else readSpectrum(); }
     if (tilt) updateTilt(dt);
 
     if (spinning) yaw += P.baseSpin * P.speed * dt * (eq ? (1 + bandBass * 1.2) : 1);
@@ -466,7 +477,7 @@
       $("fps").textContent = Math.round(fpsN / fpsAcc); $("yaw").textContent = Math.round(((yaw % TWO_PI + TWO_PI) % TWO_PI) * 180 / Math.PI) + "°"; fpsAcc = 0; fpsN = 0; fpsT = now;
       if (eq){
         if (spec){ var n = spec.length; for (var j = 0; j < 24; j++){ var lo = Math.floor(Math.pow(n * 0.6, j / 24)), hi = Math.max(lo + 1, Math.floor(Math.pow(n * 0.6, (j + 1) / 24))), s = 0; for (var t = lo; t < hi; t++) s += spec[t]; specBuf[j] = SPECCH[Math.min(7, ((s / (hi - lo)) / 255 * 7.99) | 0)]; } $("spec").textContent = specBuf.join(""); }
-        var el = (srcKind === "file" || srcKind === "track") && media ? media.currentTime : (srcKind === "demo" && demo ? demo.elapsed() : 0);
+        var el = (srcKind === "file") && media ? media.currentTime : (srcKind === "demo" && demo ? demo.elapsed() : 0);
         $("time").textContent = Math.floor(el / 60) + ":" + ("0" + Math.floor(el % 60)).slice(-2);
       }
       if (tilt){ $("tb").textContent = Math.round(sb) + "°"; $("tg").textContent = Math.round(sg) + "°"; }
@@ -491,7 +502,8 @@
   var dragging = false, lastX = 0, lastY = 0, lastT = 0, pinchD = 0, pointers = {}, gestured = false;
   function firstGesture(){
     if (gestured) return; gestured = true;
-    if (P.mode === "eq" && !srcKind){ setSource("track"); }
+    if (SILENT){ $("prompt").hidden = true; return; }
+    if (P.mode === "eq" && !srcKind){ setSource("demo"); }
     else if (actx && actx.state === "suspended") actx.resume();
     $("prompt").hidden = true;
   }
@@ -542,7 +554,7 @@
   $("modeSeg").addEventListener("click", function(e){ var b = e.target.closest("[data-m]"); if (!b) return; setMode(b.dataset.m); });
   $("srcSeg").addEventListener("click", function(e){ var b = e.target.closest("[data-src]"); if (!b) return; if (b.dataset.src === "file"){ $("file").click(); return; } setSource(b.dataset.src); });
   $("file").addEventListener("change", function(){ if (this.files[0]) setSource("file", this.files[0]); this.value = ""; });
-  $("play").addEventListener("click", function(){ if (!srcKind){ setSource("track"); return; } playing ? pause() : play(); });
+  $("play").addEventListener("click", function(){ if (!srcKind){ setSource("demo"); return; } playing ? pause() : play(); });
 
   var tiltReady = false;
   function setMode(m){
@@ -557,7 +569,7 @@
       if (playing) pause();
     } else {
       $("capText").innerHTML = "The https globe as a live EQ. <em>Drop your own track, try the demo loop, or open the mic.</em>";
-      if (!gestured){ $("promptText").textContent = (matchMedia("(pointer: coarse)").matches ? "Tap" : "Click") + " to play"; $("prompt").hidden = false; }
+      if (!gestured && !SILENT){ $("promptText").textContent = (matchMedia("(pointer: coarse)").matches ? "Tap" : "Click") + " to play"; $("prompt").hidden = false; }
     }
     layout();
   }
@@ -565,8 +577,11 @@
   /* boot */
   var coarse = window.matchMedia("(pointer: coarse)").matches && !!window.DeviceOrientationEvent;
   if (window.innerWidth < 768){ P.cell = 7; $("density").value = 7; $("vDensity").textContent = "7px"; }
+  if (q.get("wire") === "1"){ P.wire = true; document.querySelectorAll("#surface .btn").forEach(function(b){ b.classList.toggle("on", b.dataset.mode === "wire"); }); }
+  if (q.get("cell")){ var qc = Math.min(16, Math.max(5, parseInt(q.get("cell"), 10) || P.cell)); P.cell = qc; $("density").value = qc; $("vDensity").textContent = qc + "px"; }
   resize();
-  if (q.get("zoom")) P.zoom = Math.min(2.4, Math.max(0.45, parseFloat(q.get("zoom")) || 1));
+  if (q.get("zoom")) P.zoom = Math.min(2.4, Math.max(0.1, parseFloat(q.get("zoom")) || 1));
+  if (SILENT){ seqT0 = performance.now(); if (!q.get("mode")) q.set("mode", "eq"); }
   setMode(EMBED ? (q.get("mode") || "none") : (q.get("mode") || (coarse ? "tilt" : "eq")));
   if (q.get("tilt")){ var tv = q.get("tilt").split(","); window.__setTilt(+tv[0], +tv[1]); }
   if (q.get("autostart") === "eq"){ firstGesture(); }
