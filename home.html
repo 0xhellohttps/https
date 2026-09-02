@@ -145,6 +145,7 @@
   .grid{ display:grid; gap:16px; }
   .g-3{ grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); }
   .g-7{ grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); }
+  .g-fit{ grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); }
   .card{ display:flex; flex-direction:column; gap:14px; padding:20px; border:1px solid var(--border); background:var(--bg); transition:background .2s ease; }
   .card:hover{ background:var(--panel-2); }
   .card p{ font-size:15px; line-height:1.35; color:rgba(255,255,255,.6); }
@@ -316,6 +317,9 @@
       </div>
       <div id="serviceGroups"></div>
 
+      <div class="group-title"><span>Assessment</span></div>
+      <div class="grid g-fit" id="assessment"></div>
+
       <div class="group-title"><span>Engagement process</span></div>
       <div class="grid g-7" id="auditSteps"></div>
 
@@ -434,6 +438,11 @@
       { t: "Product Management", d: "Turn ideas into successful products through strategic planning and execution.", l: ["Product Discovery","Product Strategy","Roadmap Planning","Feature Prioritization","Market Research","Customer Research","MVP Definition","Product Requirements Documents (PRDs)","Agile Product Management","Sprint Planning","Stakeholder Alignment","Product Analytics","KPI Definition","User Feedback Loops","Product Launch Planning"] }
     ]}
   ];
+  var ASSESSMENT = [
+    { t: "Abstraction", d: "We reduce the problem to its essentials before any tooling is chosen: what the system must do, which agents, services, and people it must talk to, and what it must never do. Constraints, trust boundaries, and success criteria are written down and agreed." },
+    { t: "Assimilation", d: "We absorb your context: codebase, infrastructure, data flows, identity and access, and the external systems or agents you must interoperate with. What exists is mapped against the abstraction, and the gaps and risks are surfaced in plain terms." },
+    { t: "Application", d: "We turn the assessment into a plan: architecture, scope, sequencing, and a quote, with every recommendation traceable to a finding. The engagement process below then takes over." }
+  ];
   var AUDIT_STEPS = ["Discovery call","Share context and codebase","Scope and quote","Design, review, or build","Findings and iteration","Documentation and handover","Follow-up support if needed"];
   var EXPERTISE = ["Multi-agent systems","A2A and MCP protocols","Distributed systems","Event-driven architecture","Identity and attestation","Payments and fintech platforms","Live entertainment infrastructure","Knowledge systems and RAG","Security engineering","Developer platforms and APIs"];
 
@@ -448,6 +457,9 @@
         out.push("");
       });
     });
+    out.push("ASSESSMENT");
+    ASSESSMENT.forEach(function(a,i){ out.push("    " + (i+1) + ". " + a.t); out.push("       " + a.d); });
+    out.push("");
     out.push("ENGAGEMENT PROCESS");
     AUDIT_STEPS.forEach(function(s,i){ out.push("    " + (i+1) + ". " + s); });
     out.push("");
@@ -486,6 +498,9 @@
     if (hidden.length){ hidden.forEach(function(li){ li.classList.remove("hidden"); }); b.textContent = "− show less"; b.dataset.open = "1"; }
     else { card.querySelectorAll("li").forEach(function(li,i){ if (i >= SHOW) li.classList.add("hidden"); }); b.textContent = "+ " + (card.querySelectorAll("li").length - SHOW) + " more"; delete b.dataset.open; }
   });
+  document.getElementById("assessment").innerHTML = ASSESSMENT.map(function(a,i){
+    return '<div class="card"><span class="mono muted">0' + (i+1) + '</span><h3>' + esc(a.t) + '</h3><p>' + esc(a.d) + '</p></div>';
+  }).join("");
   document.getElementById("auditSteps").innerHTML = AUDIT_STEPS.map(function(s,i){
     return '<div class="step"><span class="n">0' + (i+1) + '</span><span class="t">' + esc(s) + '</span></div>';
   }).join("");
