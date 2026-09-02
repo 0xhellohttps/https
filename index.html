@@ -2,7 +2,7 @@
 <html lang="en" style="color-scheme:dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>https</title>
 <meta name="description" content="https — fast, secure, well-encrypted web. https-first, always.">
 <meta name="color-scheme" content="dark">
@@ -20,10 +20,11 @@
   .mono{ font-family:var(--mono); font-size:14px; line-height:16px; letter-spacing:-.14px; text-transform:uppercase; }
   .muted{ color:var(--muted); }
 
-  #world{ position:fixed; inset:0; width:100%; height:100%; border:0; display:block; background:var(--bg); }
+  #worldWrap{ position:fixed; inset:0; overflow:hidden; background:var(--bg); -webkit-overflow-scrolling:auto; }
+  #world{ position:absolute; inset:0; width:100%; height:100%; border:0; display:block; background:var(--bg); }
 
-  .ui{ position:fixed; inset:0; display:flex; flex-direction:column; justify-content:space-between; padding:16px var(--pad-x); pointer-events:none; }
-  @media (min-width:768px){ .ui{ padding:20px var(--pad-x) 40px; } }
+  .ui{ position:fixed; inset:0; display:flex; flex-direction:column; justify-content:space-between; padding:max(16px, env(safe-area-inset-top)) max(var(--pad-x), env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(var(--pad-x), env(safe-area-inset-left)); pointer-events:none; }
+  @media (min-width:768px){ .ui{ padding-top:20px; padding-bottom:max(40px, env(safe-area-inset-bottom)); } }
   .ui > *{ pointer-events:auto; }
   .top, .bottom{ display:flex; align-items:center; justify-content:space-between; gap:16px; }
   .brand{ display:flex; align-items:center; gap:10px; }
@@ -36,7 +37,7 @@
   .label i.live{ background:var(--green); box-shadow:0 0 12px var(--green); }
 
   .wordmark{ display:block; width:100%; cursor:pointer; }
-  .wordmark svg{ display:block; width:100%; height:auto; }
+  .wordmark svg{ display:block; width:100%; height:auto; max-height:22vh; }
   .wordmark rect{ fill:#EBEBEB; transition:fill .25s ease; }
   .wordmark:hover rect, .wordmark:focus-visible rect{ fill:var(--green); }
   .wordmark:focus-visible{ outline:1px solid var(--green); outline-offset:8px; }
@@ -46,10 +47,10 @@
 </head>
 <body>
 
-<iframe id="world" title="The https globe, animated silently by the demo loop" allow="accelerometer; gyroscope"></iframe>
+<div id="worldWrap"><iframe id="world" title="The https globe, animated silently by the demo loop" allow="accelerometer; gyroscope"></iframe></div>
 <script>
   /* Small world: 22% of the short viewport edge on desktop; a little larger on phones so it still reads as a globe. */
-  document.getElementById("world").src = "visualizer.html?embed=1&silent=1&cell=10&wire=1&zoom=" + (window.innerWidth < 768 ? "0.42" : "0.22");
+  document.getElementById("world").src = "visualizer.html?embed=1&silent=1&cell=10&wire=1&zoom=" + (Math.min(window.innerWidth, window.innerHeight) < 600 ? "0.42" : "0.22");
 </script>
 
 <div class="ui">

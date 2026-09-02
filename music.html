@@ -72,6 +72,10 @@
   .label span{ font-family:var(--mono); font-size:14px; line-height:16px; letter-spacing:-.14px; text-transform:uppercase; color:var(--muted); }
   .rule{ border-top:1px solid var(--border); padding-top:24px; }
   h1{ font-family:var(--sans); font-weight:400; font-size:44px; line-height:1; letter-spacing:-1.3px; }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  /* ASCII headline: 5-row pixel font (same as the HTTPS wordmark) drawn in mono glyphs; each cell is 0.6em wide x 0.62em tall so pixels stay square */
+  .ascii-h1{ display:inline-block; font-family:var(--mono); font-weight:500; line-height:0.76; letter-spacing:0; white-space:pre; color:var(--fg); margin:0; padding:14px 16px; background:rgba(6,6,6,.86); border:1px solid var(--border); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+  .ascii-h1 i{ font-style:normal; color:rgba(235,235,235,.16); }
   h2{ font-family:var(--sans); font-weight:400; font-size:28px; line-height:1.1; letter-spacing:-.32px; }
   h3{ font-family:var(--sans); font-weight:400; font-size:20px; line-height:1.1; }
   .big{ font-family:var(--sans); font-weight:400; text-transform:uppercase; font-size:34px; line-height:1; letter-spacing:-.9px; max-width:1100px; }
@@ -171,7 +175,8 @@
     <div class="hero-bg" aria-hidden="true"><iframe src="visualizer.html?embed=1" title="" tabindex="-1" loading="eager"></iframe></div>
     <div class="hero-in">
       <div class="label"><i></i><span>HTTPS Entertainment</span></div>
-      <h1>Sound, shipped<br>https-first.</h1>
+      <h1 class="sr">Sound, shipped https-first.</h1>
+      <pre class="ascii-h1" id="asciiH1" aria-hidden="true" data-desktop="SOUND, SHIPPED|HTTPS-FIRST." data-mobile="SOUND,|SHIPPED|HTTPS-|FIRST."></pre>
       <div class="hero-row">
         <p class="lede">HTTPS Entertainment provides marketing and technical services for record labels and artists.</p>
         <a class="next" href="#ooo">
@@ -359,6 +364,39 @@
       b.querySelector(".label").textContent = "Located";
     }, function(){ b.querySelector(".label").textContent = "Denied"; }, { timeout:10000, maximumAge:600000 });
   });
+})();
+</script>
+<script>
+(function(){
+  var el = document.getElementById("asciiH1"); if (!el) return;
+  var F = {
+    A:[" ### ","#   #","#####","#   #","#   #"], D:["#### ","#   #","#   #","#   #","#### "], E:["#####","#    ","#### ","#    ","#####"],
+    F:["#####","#    ","#### ","#    ","#    "], H:["#   #","#   #","#####","#   #","#   #"], I:["#####","  #  ","  #  ","  #  ","#####"],
+    N:["#   #","##  #","# # #","#  ##","#   #"], O:[" ### ","#   #","#   #","#   #"," ### "], P:["#### ","#   #","#### ","#    ","#    "],
+    R:["#### ","#   #","#### ","#  # ","#   #"], S:[" ####","#    "," ### ","    #","#### "], T:["#####","  #  ","  #  ","  #  ","  #  "],
+    U:["#   #","#   #","#   #","#   #"," ### "], ",":["   ","   ","   "," # ","#  "], "-":["     ","     "," ### ","     ","     "],
+    ".":["  ","  ","  ","  ","# "], " ":["   ","   ","   ","   ","   "]
+  };
+  function render(){
+    var lines = (window.innerWidth < 640 ? el.dataset.mobile : el.dataset.desktop).split("|"), out = [], maxCols = 0;
+    lines.forEach(function(line){
+      var rows = ["","","","",""];
+      for (var c = 0; c < line.length; c++){
+        var g = F[line[c]] || F[" "];
+        for (var r = 0; r < 5; r++) rows[r] += g[r] + " ";
+      }
+      rows = rows.map(function(x){ return x.replace(/\s+$/, ""); });
+      maxCols = Math.max(maxCols, rows.reduce(function(m, x){ return Math.max(m, x.length); }, 0));
+      out.push(rows.join("\n"));
+    });
+    /* faint dots in the empty cells so the grid reads as a surface, like the globe */
+    var html = out.join("\n\n").replace(/[#]/g, "\u0000").replace(/ /g, "<i>.</i>").replace(/\u0000/g, "#");
+    el.innerHTML = html;
+    var avail = (el.parentElement.clientWidth || window.innerWidth) - 34;
+    var fs = Math.min(window.innerWidth < 640 ? 22 : 40, avail / (maxCols * 0.6));
+    el.style.fontSize = fs.toFixed(2) + "px";
+  }
+  render(); window.addEventListener("resize", render);
 })();
 </script>
 </body>
